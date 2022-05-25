@@ -23,9 +23,9 @@ df = df[[
     'decimal',
     'blockchain',
     'total_supply',
-    'verified'
 ]]
-
+df['total_supply'] = df['total_supply'].astype('float')
+df['decimal'] = df['decimal'].astype('int')
 
 
 app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
@@ -40,7 +40,7 @@ nav_item = dbc.NavItem(dbc.NavLink("View on GitHub", href="https://github.com/In
 # make a reuseable dropdown for the different examples
 dropdown = dbc.DropdownMenu(
     children=[
-        dbc.DropdownMenuItem("Entry 1"),
+        dbc.DropdownMenuItem("Tokens"),
         dbc.DropdownMenuItem("Entry 2"),
         dbc.DropdownMenuItem(divider=True),
         dbc.DropdownMenuItem("Entry 3"),
@@ -162,18 +162,22 @@ logo = dbc.Navbar(
 #     className="mb-5",
 # )
 
+blockchains = df['blockchain'].drop_duplicates().sort_values().to_list()
 
-data_table = html.Div([
-    dcc.Dropdown(
-    df['blockchain'].drop_duplicates().sort_values().to_list(),
-    placeholder="Select a blockchain",
-    value = None,
-    id = 'demo-dropdown'
-),
-    html.Div(id='dd-output-container'),
-    html.Div(
-    dash_table.DataTable(df.to_dict('records'), 
-                                  [{"name": i, "id": i} for i in df.columns],
+data_table = html.Div(
+    children=[
+        dcc.Dropdown(
+            id="filter_dropdown",
+            options=[{"label": bc, "value": bc} for bc in blockchains],
+            placeholder="-Select a Blockchain-",
+            multi=False,
+            value=df.blockchain.values,
+        ),
+              
+        dash_table.DataTable(
+            id="table-container",
+            columns=[{"name": i, "id": i} for i in df.columns],
+            data=df.to_dict("records"),
                                     page_size = 5,
                                     style_cell = {
                                                  'textAlign': 'left'
@@ -186,16 +190,26 @@ data_table = html.Div([
                                     filter_action="native",
                                     sort_action="native",
                                     sort_mode="multi",
-#                                     column_selectable="single",
-#                                     row_selectable="multi",
+                                    column_selectable="single",
+                                    row_selectable="multi",
                                     row_deletable=False,
                                     selected_columns=[],
                                     selected_rows=[],
                                     page_action="native",
                                     page_current= 0,
-                                 )
-    ),
-])
+                                    filter_options= {'case':'insensitive'}
+        )
+    ]
+)
+
+@app.callback(
+    Output("table-container", "data"), 
+    Input("filter_dropdown", "value")
+)
+def display_table(bc):
+    dff = df[df['blockchain']==bc]
+    return dff.to_dict("records")
+
 
 
 
@@ -247,4 +261,4 @@ for i in [1, 2, 3]:
     
 
 if __name__ == "__main__":
-    app.run_server(debug=True, port=8888)
+    app.run_server(debug=True, port=8050)
